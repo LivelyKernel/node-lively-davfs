@@ -3,7 +3,8 @@ var exec = require('child_process').execFile,
     path = require('path'),
     async = require('async');
 
-var TMP_COMMIT_MESSAGE = '[LV-DEVELOPER-STASH]',
+var START_COMMIT_MESSAGE = '[LV-CHANGESET-START]',
+    TMP_COMMIT_MESSAGE = '[LV-CHANGESET-STASH]',
     FILE_TEMPLATE = {
         fileMode: '100644', // default filemode
         objectType: 'blob',
@@ -49,9 +50,27 @@ function stringFromTree(tree) {
 
 
 function ensureBranch(branch, workingDir, callback) {
-    exec('git', ['branch', branch], { cwd: workingDir }, function(err, stdout, stderr) {
-        // no matter what, go on...
-        callback();
+    exec('git', ['branch', '--list', branch], { cwd: workingDir }, function(err, stdout, stderr) {
+        if (err) return callback(err);
+        if (stdout.trim() != '') return callback(); // branch already existing
+
+        // Create a branch but also include everything that is
+        // currently pending (uncommited changes, new files, etc.)
+        exec('git', ['add', '-A'], { cwd: workingDir }, function(err, stdout, stderr) {
+            if (err) return callback(err);
+            exec('git', ['commit', '-a', '--allow-empty', '-m', START_COMMIT_MESSAGE], { cwd: workingDir }, function(err, stdout, stderr) {
+                if (err) return callback(err);
+                exec('git', ['branch', branch], { cwd: workingDir }, function(err, stdout, stderr) {
+                    if (err) return callback(err);
+                    exec('git', ['reset', '--mixed', 'HEAD^1'], { cwd: workingDir }, function(err, stdout, stderr) {
+                        callback(err);
+                    });
+                });
+            });
+        });
+    });
+}
+
     });
 }
 
