@@ -71,9 +71,6 @@ function ensureBranch(branch, workingDir, callback) {
     });
 }
 
-    });
-}
-
 function getFileType(branch, workingDir, fileName, callback) {
     exec('git', ['cat-file', '-t', branch + ':' + fileName], { cwd: workingDir }, function(err, stdout, stderr) {
         if (err) return callback(err);
