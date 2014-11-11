@@ -11,6 +11,7 @@ var EventEmitter = require("events").EventEmitter;
 
 var DavHandler = require('jsDAV/lib/DAV/handler');
 var FsTree = require('jsDAV/lib/DAV/backends/fs/tree');
+var GitTree = require('./ext-git/tree');
 var defaultPlugins = require("jsDAV/lib/DAV/server").DEFAULT_PLUGINS;
 
 
@@ -73,7 +74,7 @@ util._extend(LivelyFsHandler.prototype, d.bindMethods({
 
     patchServer: function(server, thenDo) {
         // this is what jsDAV expects...
-        server.tree = FsTree.new(this.repository.getRootDirectory());
+        server.tree = GitTree.new(this.repository.getRootDirectory());
         server.tmpDir = './tmp'; // httpPut writes tmp files
         server.options = {};
         // for showing dir contents
@@ -105,6 +106,16 @@ util._extend(LivelyFsHandler.prototype, d.bindMethods({
             }
             this.server.baseUri = path + '/';
             req.url = path + req.url;
+
+            // FIXME: Hack to support branches
+            if (Object.getPrototypeOf(this.server.tree) == GitTree) { // should be instanceof but inheritance is broken :-(
+                var username = global.lively && global.lively.userData && global.lively.userData.getUserName(req),
+                    branchname;
+                if (username != undefined && username != 'null') // FIXME: username should not be 'null' when not set
+                    branchname = 'lvDeveloper-' + username;
+                this.server.tree.setCurrentBranch(branchname);
+            }
+
             new DavHandler(this.server, req, res);
         }
     },
