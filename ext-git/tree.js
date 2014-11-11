@@ -26,6 +26,9 @@ var jsDAV_GIT_Tree = module.exports = jsDAV_FS_Tree.extend({
             nicePath = this.stripSandbox(realPath),
             self = this;
 
+        if (this.currentBranch == undefined)
+            return jsDAV_FS_Tree.getNodeForPath.call(this, path, cbtree);
+
         // if (!this.insideSandbox(realPath))
         //     return cbtree(new Exc.Forbidden("You are not allowed to access " + nicePath));
 
@@ -38,11 +41,14 @@ var jsDAV_GIT_Tree = module.exports = jsDAV_FS_Tree.extend({
     },
 
     setCurrentBranch: function(branchName) {
-        this.currentBranch = branchName || this.defaultBranch;
+        this.currentBranch = branchName;
     },
 
     copy: function(source, destination, cbcopy) {
         var self = this;
+
+        if (this.currentBranch == undefined)
+            return jsDAV_FS_Tree.copy.call(this, source, destination, cbcopy);
 
         // if (!this.insideSandbox(destination)) {
         //     return cbfsrcopy(new Exc.Forbidden("You are not allowed to copy to " +
@@ -56,10 +62,13 @@ var jsDAV_GIT_Tree = module.exports = jsDAV_FS_Tree.extend({
         });
     },
 
-    realCopy: undefined, // delete realCopy from jsDAV_FS_Tree
+    // realCopy: undefined, // delete realCopy from jsDAV_FS_Tree
 
     move: function(source, destination, cbmove) {
         var self = this;
+
+        if (this.currentBranch == undefined)
+            return jsDAV_FS_Tree.move.call(this, source, destination, cbmove);
 
         // if (!this.insideSandbox(destination)) {
         //     return cbfsmove(new Exc.Forbidden("You are not allowed to move to " +
