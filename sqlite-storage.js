@@ -248,6 +248,7 @@ util._extend(SQLiteStore.prototype, d.bindMethods({
                         return "objs.path = '" + path.replace(/\'/g, "''") + "'";
                    }).join(' OR ') : "objs.path IS NOT NULL")
                + ')';
+        where += ' AND objs.change IS NOT "rewrite"';
         if (spec.pathPatterns) {
             where += " AND ( " + spec.pathPatterns.map(function(pattern) {
                 return "objs.path LIKE '" + pattern.replace(/\'/g, "''") + "'";
