@@ -102,10 +102,10 @@ function initFSTables(db, reset, thenDo) {
 }
 
 function storeVersionedObjects(db, dataAccessors, options, thenDo) {
-    // this batch-processes worlds inserts
-    // worldDataAccessors is an array of functions that expect one parameter, a
+    // this batch-processes inserts
+    // dataAccessors is an array of functions that expect one parameter, a
     // callback, that in turn has an error callback and an object
-    // {uri, version,json} this should be stored in the db
+    // {uri, version, json} this should be stored in the db
     // queued so that we do not start open file handles to all worlds at once
     function afterInsert() {}
     function worker(accessor, next) {
@@ -114,19 +114,20 @@ function storeVersionedObjects(db, dataAccessors, options, thenDo) {
                 console.log('Could not access %s: ', data, err);
                 taskCount--; next(); return;
             }
+            if (data && data.change == 'rewrite') return afterVersioning(); // skip creation of a new version
             console.log("storing %s...", data && data.path);
             versionStmt.run(
                 data.path, data.change, data.author, dateString(data.date), data.content, data.path,
                 /* callback */ afterVersioning
             );
-            // db can run stuff in parallel, no need to wait for versionStmt to finsish
+            // db can run stuff in parallel, no need to wait for versionStmt to finish
             // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
             function afterVersioning(err) {
                 if (err || !data.rewritten) {
                     afterInsert.bind(this)(err);
                     return;
                 }
-                console.log('storing rewrite for %s...', data.path);
+                console.log('storing rewrite for %s...', data && data.path);
                 rewriteStmt.run(
                     data.path, data.rewritten, data.ast, data.sourceMap, data.registryId, data.registryAdditions,
                     data.additionsCount || 0, data.path,

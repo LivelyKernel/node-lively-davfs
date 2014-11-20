@@ -129,6 +129,7 @@ util._extend(VersionedFileSystem.prototype, d.bindMethods({
         var versionDatasets = versionDatasets.filter(function(record) {
             return !this.isExcludedFile(record.path); }, this);
         if (!versionDatasets.length) { thenDo(null); return; }
+        var readyToStore = [];
         versionDatasets.forEach(function(record) {
             function declarationForGlobals(rewrittenAst) {
                 // _0 has all global variables
@@ -190,14 +191,19 @@ util._extend(VersionedFileSystem.prototype, d.bindMethods({
                         // TODO: make lively.ast.SourceMap.Generator.mapForASTs work?!
                         record.sourceMap = mapForASTs(ast, rewrittenAst, path.basename(record.path));
                         console.log('Done rewriting ' + record.path + '...');
+                        readyToStore.push(record);
+                        if (readyToStore.length == versionDatasets.length)
+                            this.storage.storeAll(versionDatasets, options, thenDo);
                     } catch (e) {
                         console.error('Could not rewrite ' + record.path + '!');
                         console.error(e);
                     }
                 }.bind(this));
-            }
+            } else
+                readyToStore.push(record);
         }, this);
-        this.storage.storeAll(versionDatasets, options, thenDo);
+        if (readyToStore.length == versionDatasets.length)
+            this.storage.storeAll(versionDatasets, options, thenDo);
     },
 
     // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
