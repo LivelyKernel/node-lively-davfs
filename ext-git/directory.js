@@ -106,11 +106,10 @@ var jsDAV_GIT_Directory = module.exports = jsDAV_FS_Directory.extend({
         // TODO: cache some info in this.$stat
         var self = this,
             relPath = path.relative(this.gitRootPath, this.path);
-        exec('git', ['log', '-1', '--format=\'%aD\'', this.gitBranch, '--', relPath], { cwd: this.gitRootPath }, function(err, stdout, stderr) {
+        gitHelper.lastModified(this.gitBranch, this.gitRootPath, relPath, function(err, date) {
             if (err)
                 return cbgetlm(new Exc.FileNotFound('Directory at location ' + self.path + ' not found in ' + self.gitBranch));
-            var dateStr = stdout.trimRight();
-            cbgetlm(null, dateStr != '' ? new Date(dateStr) : new Date(0));
+            cbgetlm(null, date);
         });
     }
 

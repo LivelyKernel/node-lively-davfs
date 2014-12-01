@@ -19,17 +19,7 @@ var jsDAV_GIT_File = module.exports = jsDAV_FS_File.extend({
     get: function(cbfileget) {
         // TODO: cache file content in this.$buffer
         var relPath = path.relative(this.gitRootPath, this.path);
-        exec('git', ['--no-pager', 'show', this.gitBranch + ':' + relPath], { cwd: this.gitRootPath, maxBuffer: 10000*1024, encoding: 'binary' },
-        function(err, stdout, stderr) {
-            if (err)
-                return cbfileget(err);
-            if (!Buffer.isBuffer(stdout))
-                stdout = new Buffer(stdout, 'binary');
-            // Zero length buffers act funny, use a string
-            if (stdout.length === 0)
-                stdout = '';
-            cbfileget(null, stdout);
-        });
+        gitHelper.readFile(this.gitBranch, this.gitRootPath, relPath, cbfileget);
     },
 
     getStream: undefined, // delete getStream from jsDAV_FS_File
@@ -54,10 +44,10 @@ var jsDAV_GIT_File = module.exports = jsDAV_FS_File.extend({
         // TODO: cache some info in this.$stat
         var self = this,
             relPath = path.relative(this.gitRootPath, this.path);
-        exec('git', ['cat-file', '-s', this.gitBranch + ':' + relPath], { cwd: this.gitRootPath }, function(err, stdout, stderr) {
-            if (err || parseInt(stdout) == NaN)
+        gitHelper.fileSize(this.gitBranch, this.gitRootPath, relPath, function(err, size) {
+            if (err)
                 return cbgetsize(new Exc.FileNotFound('File at location ' + self.path + ' not found in ' + self.gitBranch));
-            cbgetsize(null, parseInt(stdout));
+            cbgetsize(null, size);
         });
     },
 
@@ -65,10 +55,10 @@ var jsDAV_GIT_File = module.exports = jsDAV_FS_File.extend({
         // TODO: cache some info in this.$stat
         var self = this,
             relPath = path.relative(this.gitRootPath, this.path);
-        exec('git', ['log', '-1', '--format=\'%aD\'', this.gitBranch, '--', relPath], { cwd: this.gitRootPath }, function(err, stdout, stderr) {
+        gitHelper.lastModified(this.gitBranch, this.gitRootPath, relPath, function(err, date) {
             if (err)
-                return cbgetlm(new Exc.FileNotFound('File at location ' + self.path + ' not found in ' + self.gitBranch));
-            cbgetlm(null, new Date(stdout.trimRight()));
+                return cbgetlm(new Exc.FileNotFound('Directory at location ' + self.path + ' not found in ' + self.gitBranch));
+            cbgetlm(null, date);
         });
     }
     
