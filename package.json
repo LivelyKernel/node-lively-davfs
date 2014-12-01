@@ -29,7 +29,8 @@
     "sqlite3": "~2.1",
     "concat-stream": "~1.0",
     "source-map": ">=0.1.31",
-    "lively-loader": ">=0.1.1"
+    "lively-loader": ">=0.1.1",
+    "lively-git-helper": ">=0.0.1"
   },
   "devDependencies": {
     "nodeunit": "~0.8",

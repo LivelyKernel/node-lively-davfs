@@ -3,7 +3,7 @@ var jsDAV_FS_File = require('jsDAV/lib/DAV/backends/fs/file');
 var exec = require('child_process').execFile;
 var path = require('path');
 var fs = require('fs');
-var gitHelper = require('./helper');
+var gitHelper = require('lively-git-helper');
 
 // copied from jsDAV/lib/DAV/backends/fs/tree
 var Exc = require('jsDAV/lib/shared/exceptions');
