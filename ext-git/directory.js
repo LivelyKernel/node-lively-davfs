@@ -27,9 +27,9 @@ var jsDAV_GIT_Directory = module.exports = jsDAV_FS_Directory.extend({
             enc  = "binary";
         }
         gitHelper.isIgnored(this.gitRootPath, newPath, function(err, ignored) {
-            if (err) return cbcreatefile(err);
+            if (err && err.code != 'NONGIT') return cbcreatefile(err);
 
-            if (ignored)
+            if (ignored || (err && err.code == 'NONGIT'))
                 jsDAV_FS_Directory.createFile.call(self, name, data, enc, cbcreatefile);
             else
                 gitHelper.writeFile(self.gitBranch, self.gitRootPath, newPath, data, enc || 'utf8', cbcreatefile);

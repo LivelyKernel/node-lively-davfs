@@ -5,6 +5,7 @@ var jsDAV_GIT_File = require('./file');
 var jsDAV_GIT_Directory = require('./directory');
 
 var exec = require('child_process').exec;
+var path = require('path');
 var fs = require('fs');
 var gitHelper = require('lively-git-helper');
 
@@ -21,22 +22,38 @@ var jsDAV_GIT_Tree = module.exports = jsDAV_FS_Tree.extend({
         this.currentBranch = this.defaultBranch;
     },
 
-    getNodeForPath: function(path, cbtree) {
-        var realPath = this.getRealPath(path),
-            nicePath = this.stripSandbox(realPath),
+    getNodeForPath: function(name, cbtree) {
+        var realPath = this.getRealPath(name),
+            // nicePath = this.stripSandbox(realPath),
             self = this;
 
         if (this.currentBranch == undefined)
-            return jsDAV_FS_Tree.getNodeForPath.call(this, path, cbtree);
+            return jsDAV_FS_Tree.getNodeForPath.call(this, name, cbtree);
 
         // if (!this.insideSandbox(realPath))
         //     return cbtree(new Exc.Forbidden("You are not allowed to access " + nicePath));
 
-        gitHelper.fileType(this.currentBranch, this.basePath, path, function(err, isDir) {
-            if (err) return jsDAV_FS_Tree.getNodeForPath.call(self, path, cbtree);
-            cbtree(null, isDir ?
-                jsDAV_GIT_Directory.new(realPath, self.basePath, self.currentBranch) :
-                jsDAV_GIT_File.new(realPath, self.basePath, self.currentBranch));
+        function findGitPathIncremental(pathParts, callback) {
+            gitHelper.gitPath(pathParts.join(path.sep), function(err, repoBase) {
+                if (err) {
+                    if (err.code == 'NOTADIR' && pathParts.length > 0)
+                        return findGitPathIncremental(pathParts.slice(0, -1), callback);
+                    else
+                        return callback(err);
+                }
+                callback(null, repoBase);
+            });
+        }
+
+        findGitPathIncremental(realPath.split(path.sep), function(err, repoBase) {
+            if (err) return jsDAV_FS_Tree.getNodeForPath.call(self, name, cbtree);
+            var relName = path.relative(repoBase, realPath);
+            gitHelper.fileType(self.currentBranch, repoBase, relName, function(err, isDir) {
+                if (err) return jsDAV_FS_Tree.getNodeForPath.call(self, name, cbtree);
+                cbtree(null, isDir ?
+                    jsDAV_GIT_Directory.new(realPath, repoBase, self.currentBranch) :
+                    jsDAV_GIT_File.new(realPath, repoBase, self.currentBranch));
+            });
         });
     },
 
