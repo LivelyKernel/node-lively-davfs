@@ -36,7 +36,7 @@ function matches(reOrString, pathPart) {
  *   change: STRING
  * }
  * a change is what kind of operation the version created:
- * ['initial', 'creation', 'deletion', 'contentChange']
+ * ['initial', 'creation', 'deletion', 'contentChange', 'rewrite']
  */
 
 function VersionedFileSystem(options) {
