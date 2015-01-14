@@ -49,7 +49,13 @@ var jsDAV_GIT_Tree = module.exports = jsDAV_FS_Tree.extend({
             if (err) return jsDAV_FS_Tree.getNodeForPath.call(self, name, cbtree);
             var relName = path.relative(repoBase, realPath);
             gitHelper.fileType(self.currentBranch, repoBase, relName, function(err, isDir) {
-                if (err) return jsDAV_FS_Tree.getNodeForPath.call(self, name, cbtree);
+                if (err) {
+                    return gitHelper.isIgnored(repoBase, relName, function(err, ignored) {
+                        if (err || ignored)
+                            return jsDAV_FS_Tree.getNodeForPath.call(self, name, cbtree);
+                        cbtree(new Exc.FileNotFound('File at location ' + relName + ' not found in "' + self.currentBranch + "'"));
+                    });
+                }
                 cbtree(null, isDir ?
                     jsDAV_GIT_Directory.new(realPath, repoBase, self.currentBranch) :
                     jsDAV_GIT_File.new(realPath, repoBase, self.currentBranch));
