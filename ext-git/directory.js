@@ -51,7 +51,13 @@ var jsDAV_GIT_Directory = module.exports = jsDAV_FS_Directory.extend({
             self = this;
 
         gitHelper.fileType(this.gitBranch, this.gitRootPath, relPath, function(err, isDir) {
-            if (err) return jsDAV_FS_Directory.getChild.call(self, name, cbgetchild);
+            if (err) {
+                return gitHelper.isIgnored(this.gitRootPath, relPath, function(err, ignored) {
+                    if (err || ignored)
+                        return jsDAV_FS_Directory.getChild.call(self, name, cbgetchild);
+                    cbgetchild(new Exc.FileNotFound('File with name ' + path + ' could not be located in "' + self.currentBranch + "'"));
+                });
+            }
             cbgetchild(null, isDir ?
                 jsDAV_GIT_Directory.new(fullPath, self.gitRootPath, self.gitBranch) :
                 jsDAV_GIT_File.new(fullPath, self.gitRootPath, self.gitBranch));
