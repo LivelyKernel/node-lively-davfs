@@ -82,6 +82,15 @@ function initFSTables(db, reset, thenDo) {
           + "  PRIMARY KEY(path,version));"),
         lvFsUtil.curry(run, db, "CREATE INDEX IF NOT EXISTS versioned_objects_index ON versioned_objects(path,version);"),
         lvFsUtil.curry(run, db, "CREATE INDEX IF NOT EXISTS versioned_objects_date_index ON versioned_objects(date,path);"),
+        function(callback) {
+            run(db, "ALTER TABLE versioned_objects ADD COLUMN branch TEXT", function(err, result) {
+                if (err) {
+                    var msg = err.message.toLowerCase();
+                    if (!msg.indexOf('duplicate')) return callback(err, result); // ignore duplicate messages
+                }
+                callback(null, result);
+            });
+        },
         lvFsUtil.curry(run, db,
             "CREATE TABLE IF NOT EXISTS rewritten_objects ("
           + "  path TEXT,"
@@ -117,7 +126,7 @@ function storeVersionedObjects(db, dataAccessors, options, thenDo) {
             if (data && data.change == 'rewrite') return afterVersioning(); // skip creation of a new version
             console.log("storing %s...", data && data.path);
             versionStmt.run(
-                data.path, data.change, data.author, dateString(data.date), data.content, data.path,
+                data.path, data.branch, data.change, data.author, dateString(data.date), data.content, data.path,
                 /* callback */ afterVersioning
             );
             // db can run stuff in parallel, no need to wait for versionStmt to finish
@@ -153,8 +162,8 @@ function storeVersionedObjects(db, dataAccessors, options, thenDo) {
     var taskCount = dataAccessors.length,
         importCount = 0,
         parallelReads = 10,
-        sqlVersionStmt = 'INSERT INTO versioned_objects '
-                       + 'SELECT ?, ifnull(x,0), ?, ?, ?, ? '
+        sqlVersionStmt = 'INSERT INTO versioned_objects (path, version, branch, change, author, date, content) '
+                       + 'SELECT ?, ifnull(x,0), ?, ?, ?, ?, ? '
                        + 'FROM (SELECT max(CAST(objs2.version as integer)) + 1 AS x '
                        + '      FROM versioned_objects objs2 '
                        + '      WHERE objs2.path = ?);',
@@ -162,7 +171,7 @@ function storeVersionedObjects(db, dataAccessors, options, thenDo) {
             // this callback is needed, when it is not defined the server crashes
             // but when it is there the versionStmt.run callback also seems the catch the error...
             err && console.error('error in sql %s: %s', sqlVersionStmt, err); }),
-        sqlRewriteStmt = 'INSERT INTO rewritten_objects '
+        sqlRewriteStmt = 'INSERT INTO rewritten_objects (path, version, rewrite, ast, sourcemap, registry_id, registry_additions, additions_count) '
                        + 'SELECT ?, x, ?, ?, ?, ?, ?, ? '
                        + 'FROM (SELECT max(CAST(objs.version as integer)) AS x '
                        + '      FROM versioned_objects objs '
@@ -222,10 +231,12 @@ util._extend(SQLiteStore.prototype, d.bindMethods({
         //   limit: [NUMBER],
         //   rewritten: BOOL, -- return rewritten version as content
         //   astIndex: [NUMBER], -- only if rewritten = true, AST index to lookup
+        //   branches: [STRING], -- return records from branches (and master/"null" as default)
+        //   allBranches: BOOL, -- return all records ("null" and all branches)
         // }
         spec = spec || {};
         // SELECT caluse
-        var defaultAttrs = ["path","version","change","author","date","content"];
+        var defaultAttrs = ["path","version","branch","change","author","date","content"];
         var attrs = spec.attributes || defaultAttrs;
         attrs = attrs.map(function(attr) {
             if (spec.rewritten && attr == 'content')
@@ -275,6 +286,15 @@ util._extend(SQLiteStore.prototype, d.bindMethods({
         }
         if (spec.astIndex) {
             where += " AND " + spec.astIndex + " BETWEEN reObjs.registry_id AND (reObjs.registry_id + reObjs.additions_count)";
+        }
+        if (!spec.allBranches) {
+            where += " AND (objs.branch IS NULL";
+            if (spec.branches && spec.branches.length > 0) {
+                where += " OR " + spec.branches.map(function(branch) {
+                    return "objs.branch = '" + branch.replace(/\'/g, "''") + "'";
+                }).join(" OR ");
+            }
+            where += ")";
         }
         // ORDER BY
         var orderBy;

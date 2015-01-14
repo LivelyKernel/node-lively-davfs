@@ -71,6 +71,7 @@ var livelyDAVPlugin = module.exports = jsDAVPlugin.extend({
             username = global.lively && global.lively.userData && global.lively.userData.getUserName(req);
         this.emit('fileChanged', {
             username: username,
+            branch: node.gitBranch,
             uri: uri,
             req: req,
             content: this._putContent});
@@ -90,6 +91,7 @@ var livelyDAVPlugin = module.exports = jsDAVPlugin.extend({
             username = global.lively && global.lively.userData && global.lively.userData.getUserName(req);
         this.emit('fileCreated', {
             username: username,
+            branch: node.gitBranch,
             uri: uri,
             req: req,
             content: this._putContent});
@@ -108,7 +110,11 @@ var livelyDAVPlugin = module.exports = jsDAVPlugin.extend({
         log("jsDAV event: beforeUnbind %s", uri);
         var req = this.handler.httpRequest,
             username = global.lively && global.lively.userData && global.lively.userData.getUserName(req);
-        this.emit('fileDeleted', {uri: uri, req: this.handler.httpRequest, username: username});
+        this.emit('fileDeleted', {
+            username: username,
+            branch: req.branch, // added in request-handler.js
+            uri: uri,
+            req: this.handler.httpRequest});
         return e.next();
     }
 }, EventEmitter.prototype);

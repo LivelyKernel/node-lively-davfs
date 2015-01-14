@@ -8,6 +8,7 @@ var livelyDAVPlugin = require('./jsDAV-plugin');
 var VersionedFileSystem = require('./VersionedFileSystem');
 var d = require('./domain');
 var log = require('./util').log;
+var gitHelper = require('lively-git-helper');
 
 var counter = 0;
 function newID() { return ++counter; }
@@ -135,6 +136,7 @@ util._extend(Repository.prototype, d.bindMethods({
                 version: undefined,
                 change: changeType,
                 author: evt.username || 'unknown',
+                branch: evt.branch || null,
                 date: evt.stat ? evt.stat.mtime :
                     (readStat ? '' :
                         // don't record the ms
@@ -163,17 +165,17 @@ util._extend(Repository.prototype, d.bindMethods({
     },
 
     onFileChange: function(evt) {
-        console.log('file change: ', evt.uri);
+        console.log('file changed' + (evt.branch ? ' on branch "' + evt.branch + '"' : '') + ':', evt.uri);
         this.captureDAVEvt('contentChange', true, true, evt);
     },
 
     onFileCreation: function(evt) {
-        console.log('file created: ', evt.uri);
+        console.log('file created' + (evt.branch ? ' on branch "' + evt.branch + '"' : '') + ':', evt.uri);
         this.captureDAVEvt('created', true, true, evt);
     },
 
     onFileDeletion: function(evt) {
-        console.log('file deleted: ', evt.uri);
+        console.log('file deleted' + (evt.branch ? ' from branch "' + evt.branch + '"' : '') + ':', evt.uri);
         this.captureDAVEvt('deletion', false, false, evt);
     },
 
@@ -206,7 +208,8 @@ util._extend(Repository.prototype, d.bindMethods({
     readFileStat: function(change) {
         var repo = this;
         log("start reading file stat for %s", change.record.path);
-        fs.stat(path.join(repo.getRootDirectory(), change.record.path), function(err, stat) {
+
+        function processStat(err, stat) {
             if (err || !stat) {
                 console.error('readFileStat: ', err);
                 repo.discardPendingChange(change);
@@ -217,7 +220,16 @@ util._extend(Repository.prototype, d.bindMethods({
             change.record.date = stat.mtime.toISOString();
             change.statRead = true;
             repo.commitPendingChanges();
-        });
+        }
+
+        if (!change.record.branch)
+            fs.stat(path.join(repo.getRootDirectory(), change.record.path), processStat);
+        else
+            gitHelper.lastModified(change.record.branch, repo.getRootDirectory(), change.record.path, function(err, mtime) {
+                processStat(err, { // fake stat with the only thing needed right now
+                    mtime: mtime
+                });
+            });
     },
 
     // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-

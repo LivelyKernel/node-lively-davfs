@@ -111,8 +111,10 @@ util._extend(LivelyFsHandler.prototype, d.bindMethods({
             if (Object.getPrototypeOf(this.server.tree) == GitTree) { // should be instanceof but inheritance is broken :-(
                 var username = global.lively && global.lively.userData && global.lively.userData.getUserName(req),
                     branchname = req.cookies['livelykernel-branch'];
-                if (branchname)
+                if (branchname) {
                     branchname = 'lvChangeSet-' + branchname;
+                    req.branch = branchname;
+                }
                 // this.server.tree.setUserName(username);
                 this.server.tree.setCurrentBranch(branchname);
             }

@@ -31,6 +31,7 @@ function matches(reOrString, pathPart) {
  *   version: STRING||NUMBER,
  *   [stat: FILESTAT,]
  *   author: STRING,
+ *   branch: STRING||null,
  *   date: STRING,
  *   content: STRING,
  *   change: STRING
