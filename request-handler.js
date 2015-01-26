@@ -110,7 +110,13 @@ util._extend(LivelyFsHandler.prototype, d.bindMethods({
             // FIXME: Hack to support branches
             if (Object.getPrototypeOf(this.server.tree) == GitTree) { // should be instanceof but inheritance is broken :-(
                 var username = global.lively && global.lively.userData && global.lively.userData.getUserName(req),
-                    branchname = req.cookies['livelykernel-branch'];
+                    branchname = req.cookies['livelykernel-branch'],
+                    referer = req.get('Referer');
+                if (referer) {
+                    referer = Url.parse(referer, true);
+                    branchname = referer.query['testChangeSet'] || referer.query['changeSet'] || branchname;
+                }
+                branchname = req.query['testChangeSet'] || req.query['changeSet'] || branchname;
                 if (branchname) {
                     branchname = 'lvChangeSet-' + branchname;
                     req.branch = branchname;
