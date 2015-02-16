@@ -117,10 +117,8 @@ util._extend(LivelyFsHandler.prototype, d.bindMethods({
                     branchname = referer.query['testChangeSet'] || referer.query['changeSet'] || branchname;
                 }
                 branchname = req.query['testChangeSet'] || req.query['changeSet'] || branchname;
-                if (branchname) {
-                    branchname = 'lvChangeSet-' + branchname;
+                if (branchname)
                     req.branch = branchname;
-                }
                 // this.server.tree.setUserName(username);
                 this.server.tree.setCurrentBranch(branchname);
             }
