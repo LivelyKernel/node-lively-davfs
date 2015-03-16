@@ -79,10 +79,13 @@ util._extend(LivelyFsHandler.prototype, d.bindMethods({
         server.options = {};
         // for showing dir contents
         server.plugins = {
-            browser: defaultPlugins.browser};
+            browser: defaultPlugins.browser
+        };
         if (this.enableVersioning) {
             server.plugins.livelydav = this.repository.getDAVPlugin();
         }
+        server.plugins.gitFSLock = require('./ext-git/lock-plugin');
+
         // https server has slightly different interface
         if (!server.baseUri) server.baseUri = '/';
         if (!server.getBaseUri) server.getBaseUri = function() { return this.baseUri };
