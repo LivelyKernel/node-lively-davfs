@@ -33,7 +33,7 @@ var jsDAV_GIT_Directory = module.exports = jsDAV_FS_Directory.extend({
                 jsDAV_FS_Directory.createFile.call(self, name, data, enc, cbcreatefile);
             else
                 gitHelper.writeFile(self.gitBranch, self.gitRootPath, newPath, data, enc || 'utf8', cbcreatefile);
-        })
+        });
     },
 
     createFileStream: undefined, // delete createFileStream from jsDAV_FS_Directory

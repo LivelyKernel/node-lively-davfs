@@ -74,7 +74,7 @@ util._extend(LivelyFsHandler.prototype, d.bindMethods({
 
     patchServer: function(server, thenDo) {
         // this is what jsDAV expects...
-        server.tree = GitTree.new(this.repository.getRootDirectory());
+        server.tree = GitTree.new(this.repository.getRootDirectory(), lively && lively.Config && lively.Config.get && lively.Config.get('fileSystemBranch'));
         server.tmpDir = './tmp'; // httpPut writes tmp files
         server.options = {};
         // for showing dir contents
