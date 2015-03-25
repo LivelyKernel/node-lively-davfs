@@ -4,6 +4,7 @@ var async = require("async");
 var util = require("util");
 var Url = require("url");
 var Path = require("path");
+var fs = require("fs");
 
 var Repository = require('./repository');
 var d = require('./domain');
@@ -36,12 +37,13 @@ util._extend(LivelyFsHandler.prototype, d.bindMethods({
         this.resetDatabase = !!options.resetDatabase;
         this.repository = new Repository(options);
         this.timemachineSettings = (function tmSetup(tmOptions) {
-            if (!tmOptions) return null;
+            var allowFileSystemFallback = tmOptions.hasOwnProperty("allowFileSystemFallback") ?
+              tmOptions.allowFileSystemFallback : true;
             var path = tmOptions.path;
             if (!path) return null;
             if (path[0] !== '/') path = '/' + path;
             if (path[path.length-1] !== '/') path += '/';
-            return {path: path};
+            return {allowFileSystemFallback: allowFileSystemFallback, path: path};
         })(options.timemachine || {path: '/timemachine/'});
     },
 
@@ -146,30 +148,51 @@ util._extend(LivelyFsHandler.prototype, d.bindMethods({
     handleTimemachineRequest: function(req, res, next) {
         // req.url is something like '/timemachine/2010-08-07%2015%3A33%3A22/foo/bar.js'
         // tmPath = '/timemachine/'
+
         if (req.method.toLowerCase() !== 'get') {
             res.status(400).end('timemachine request to ' + req.url + ' not supported.');
             return;
         }
+
         var tmPath = this.timemachineSettings.path,
+            allowFileSystemFallback = this.timemachineSettings.allowFileSystemFallback,
             repo = this.repository,
             versionedPath = req.url.slice(tmPath.length),
             version = versionedPath.slice(0, versionedPath.indexOf('/'));
+
         if (!version) {
             res.status(400).end('cannot read version from path: ' + req.url);
             return;
         }
+
         var path = versionedPath.slice(version.length);
         if (path[0] === '/') path = path.slice(1);
         var ts = this.makeDateAndTime(version);
         console.log('timemachine into %s, %sing path %s', ts, req.method, path);
-        this.repository.getRecords({
-            paths: [path],
-            older: ts,
-            attributes: ['version', 'date', 'author', 'content'],
-            limit: 1
-        }, function(err, records) {
-            if (err) { res.status(500).end(String(err)); return; }
-            if (!records.length) { res.status(404).end(util.format('Nothing stored for %s at %s', path, ts)); return; }
+
+        async.waterfall([
+            function retrieveVersion(next) {
+              repo.getRecords({
+                  paths: [path], older: ts,
+                  attributes: ['version', 'date', 'author', 'content'],
+                  limit: 1
+              }, next);
+            },
+            function fileSystemFallback(records, next) {
+              if (records.length || (!records.length && !allowFileSystemFallback)) {
+                next(null, records); return;
+              }
+              console.log("Filesystem fallback for %s", Path.join(repo.fs.getRootDirectory(), path));
+              fs.readFile(Path.join(repo.fs.getRootDirectory(), path), function(err, content) {
+                next(null, err || !content ? [] : [{content: String(content)}]); });
+            }
+        ], function(err, records) {
+            if (err) { res.writeHead(500); res.end(String(err)); return; }
+            if (!records || !records.length) {
+                res.writeHead(404);
+                res.end(util.format('Nothing stored for %s at %s', path, ts));
+                return;
+            }
             res.setHeader('content-type', '*/*;charset=utf8')
             var content = records[records.length-1].content;
             res.end(content);

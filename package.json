@@ -1,6 +1,6 @@
 {
   "name": "lively-davfs",
-  "version": "0.2.6",
+  "version": "0.3.4",
   "description": "Manager for versioning and reading / writing resources.",
   "main": "request-handler.js",
   "repository": {
@@ -21,15 +21,15 @@
   },
   "license": "MIT",
   "dependencies": {
-    "jsDAV": "https://github.com/LivelyKernel/jsDAV/tarball/windows-compat",
+    "jsDAV": "https://github.com/LivelyKernel/jsDAV/tarball/windows-compat-nodejs-0.12",
     "restify": "~2.6",
     "findit": "~1.1",
     "request": "~2.25",
-    "async": "~0.2",
-    "sqlite3": "~2.1",
+    "async": "~0.9",
+    "sqlite3": "~3.0.5",
     "concat-stream": "~1.0",
     "source-map": ">=0.1.31",
-    "lively-loader": ">=0.1.1",
+    "lively-loader": ">=0.2.2",
     "lively-git-helper": ">=0.0.3"
   },
   "devDependencies": {

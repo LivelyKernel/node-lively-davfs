@@ -241,6 +241,7 @@ var tests = {
             }
         ], test.done);
     },
+
     testTimeMachineHTTPAccess: function(test) {
         test.expect(3);
         async.series([
@@ -274,7 +275,38 @@ var tests = {
                 });
             },
         ], test.done);
+    },
+
+    testTimeMachineHTTPAccessFallsbackToFilesystemIfResourceNotVersioned: function(test) {
+        test.expect(3);
+        testRepo.fs.excludedFiles.push(/.*\.ignored/);
+        async.series([
+            function(next) {
+                put('aFile.ignored', 'test');
+                testRepo.once('synchronized', next);
+            },
+            function(next) {
+                get('aFile.ignored', function(err, content) {
+                    test.equal(content, 'test', 'normal GET of existing resource failed');
+                    next(err);
+                });
+            },
+            function(next) {
+                testRepo.getVersionsFor('aFile.ignored', function(err, versions) {
+                    test.equal(versions.length, 0, '# version');
+                    next();
+                });
+            },
+
+            function(next) {
+                get('timemachine/' + encodeURIComponent('2013-10-12 10:01:01 PDT') + '/aFile.ignored', function(err, content) {
+                    test.equal(content, 'test', 'timemachined GET no filesystem fallback');
+                    next(err);
+                });
+            },
+        ], test.done);
     }
+
 };
 
 module.exports = tests;
