@@ -49,16 +49,31 @@ var jsDAV_GIT_Tree = module.exports = jsDAV_FS_Tree.extend({
             if (err) return jsDAV_FS_Tree.getNodeForPath.call(self, name, cbtree);
             var relName = path.relative(repoBase, realPath);
             gitHelper.fileType(self.currentBranch, repoBase, relName, function(err, isDir) {
-                if (err) {
-                    return gitHelper.isIgnored(repoBase, relName, function(err, ignored) {
+                if (!err) {
+                    cbtree(null, isDir ?
+                        jsDAV_GIT_Directory.new(realPath, repoBase, self.currentBranch) :
+                        jsDAV_GIT_File.new(realPath, repoBase, self.currentBranch));
+                } else if (err.code == 'SYMLINK') {
+                    gitHelper.readFile(self.currentBranch, repoBase, relName, function(err, buf) {
+                        var linkedPath = path.resolve(path.dirname(relName), buf.toString()),
+                            relPath = path.relative(self.basePath, linkedPath);
+                        if (relPath.substr(0, 2) == '..')
+                            fs.stat(linkedPath, function(err, stat) { // copied from jsDAV_FS_Tree.getNodeForPath
+                                if (!Util.empty(err))
+                                    return cbtree(new Exc.FileNotFound('File at location ' + name + ' not found'));
+                                cbtree(null, stat.isDirectory() ?
+                                    jsDAV_FS_Directory.new(linkedPath) :
+                                    jsDAV_FS_File.new(linkedPath));
+                            });
+                        else
+                            self.getNodeForPath(relPath, cbtree);
+                    });
+                } else
+                    gitHelper.isIgnored(repoBase, relName, function(err, ignored) {
                         if (err || ignored)
                             return jsDAV_FS_Tree.getNodeForPath.call(self, name, cbtree);
                         cbtree(new Exc.FileNotFound('File at location ' + relName + ' not found in "' + self.currentBranch + "'"));
                     });
-                }
-                cbtree(null, isDir ?
-                    jsDAV_GIT_Directory.new(realPath, repoBase, self.currentBranch) :
-                    jsDAV_GIT_File.new(realPath, repoBase, self.currentBranch));
             });
         });
     },
