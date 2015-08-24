@@ -1,4 +1,4 @@
-"use strict"
+"use strict";
 
 var util = require("util");
 var EventEmitter = require("events").EventEmitter;
@@ -16,19 +16,42 @@ var d = require('./domain');
  */
 
 function processFile(lvfs, fi, thenDo) {
-    var rootDir = lvfs.getRootDirectory();
-    fs.readFile(path.join(rootDir, fi.path), handleReadResult);
-    function handleReadResult(err, content) {
-        if (!err) {
+    var rootDir = lvfs.getRootDirectory(),
+        fullPath = path.join(rootDir, fi.path);
+    fs.exists(fullPath, handleExistsResult);
+
+    function handleExistsResult(exists) {
+        if (exists)
+            fs.readFile(fullPath, handleReadResult);
+        else {
             lvfs.createVersionRecord({
+                change: 'deletion',
+                date: new Date().toISOString().replace(/[0-9]{3}Z/, '000Z'),
                 path: fi.path,
-                stat: fi.stat,
-                content: content
+                stat: null,
+                content: null
             }, thenDo);
-        } else {
+        }
+    }
+
+    function handleReadResult(err, content) {
+        if (err) {
             console.error('error reading file %s:', fi.path, err);
             thenDo(err);
+            return;
         }
+
+        if (fi.stat.size === 0 && !fi.stat.mime) {
+            console.error('file %s has not content, skipping versioning it', fi.path);
+            thenDo(null, null);
+            return;
+        }
+
+        lvfs.createVersionRecord({
+            path: fi.path,
+            stat: fi.stat,
+            content: content
+        }, thenDo);
     }
 }
 
@@ -36,7 +59,8 @@ function processBatch(lvfs, batch, thenDo) {
     async.mapSeries(batch,
         function(fileinfo, next) { processFile(lvfs, fileinfo, next); },
         function(err, fileRecords) {
-            lvfs.addVersions(fileRecords, {onlyImportNew: true}, thenDo); });
+            lvfs.addVersions(fileRecords.select(function(ea) { return !!ea; }),
+                             {onlyImportNew: true}, thenDo); });
 }
 
 function createBatches(files, thenDo) {
@@ -53,9 +77,12 @@ function createBatches(files, thenDo) {
 
 function filterFilesThatAreInStorage(lvfs, files, thenDo) {
     // files = [{path: STRING, stat: {mtime: DATE, ...}}]
-    var queryLimit = 3, allNewFiles = [];
+    var queryLimit = 3,
+        allNewFiles = [],
+        allFiles = [];
     var cargo = async.cargo(function(files, next) {
         var paths = files.map(function(f) { return f.path; });
+        allFiles = allFiles.concat(paths);
         lvfs.getRecords({paths: paths, newest: true, attributes: ['path','date']}, function(err, versionRecords) {
             if (err) {
                 console.error('error in filterFilesThatAreInStorage: ', err);
@@ -80,7 +107,17 @@ function filterFilesThatAreInStorage(lvfs, files, thenDo) {
     }, queryLimit);
     cargo.push(files);
     cargo.drain = function() {
-        thenDo(null, allNewFiles); };
+        lvfs.getRecords({ newest: true, exists: true, attributes: ['path'] }, function(err, versionRecords) {
+            var recordFiles = versionRecords.map(function(rec) { return rec.path; }),
+                deletedFiles = recordFiles.filter(function(i) {
+                    return allFiles.indexOf(i) < 0;
+                }).map(function(file) {
+                    console.log('Deleting non-existing file %s.', file);
+                    return { path: file, stat: { size: 0 } }; // fake fileinfo
+                });
+            thenDo(null, allNewFiles.concat(deletedFiles));
+        });
+    };
 }
 
 function runTask(lvfs, thenDo) {

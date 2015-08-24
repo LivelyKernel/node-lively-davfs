@@ -38,7 +38,6 @@ util._extend(Repository.prototype, d.bindMethods({
         this.pendingChangeQueue = [];
         this.fs.once('initialized', function() { this.emit('initialized'); }.bind(this));
         this._commitPendingChangesWatcherTimer = setInterval(this.commitPendingChangesWatcher.bind(this), 1000);
-        Object.freeze(this);
     },
 
     start: function(resetDatabase, thenDo) {

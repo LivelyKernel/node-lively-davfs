@@ -148,8 +148,10 @@ util._extend(VersionedFileSystem.prototype, d.bindMethods({
                 for (idx = 0; idx <= maxIdx; idx++) {
                     var origNode = acorn.walk.findNodeByAstIndex(origAst, idx, false);
                     var rewrittenNode = acorn.walk.findNodeByAstIndex(rewrittenAst, idx, false);
-                    if (origNode == null || rewrittenNode == null)
-                        throw new Error('Could not find AST index ' + idx + ' in given ASTs!');
+                    if (origNode == null || rewrittenNode == null) {
+                        console.warn('Could not find AST index %s in given ASTs for file %s when generating source map', idx, origFile);
+                        continue;
+                    }
                     generator.addMapping({
                         original: { line: origNode.loc.start.line, column: origNode.loc.start.column },
                         generated: { line: rewrittenNode.loc.start.line, column: rewrittenNode.loc.start.column },
@@ -168,7 +170,7 @@ util._extend(VersionedFileSystem.prototype, d.bindMethods({
                         if (err) throw err;
                         var astId = (result.length == 1 ?  result[0].lastId : 0);
                         this.astRegistry[record.path] = Array(astId);
-                        var ast = lively.ast.acorn.parse(record.content, { locations: true, directSourceFile: record.path }),
+                        var ast = lively.ast.parse(record.content, {locations: true, directSourceFile: record.path}),
                             rewrittenAst = lively.ast.Rewriting.rewrite(ast, this.astRegistry, record.path),
                             rewrittenCode = escodegen.generate(rewrittenAst);
                         record.rewritten = '(function() {\n' + rewrittenCode + '\n' + declarationForGlobals(rewrittenAst) + '\n})();';
@@ -188,7 +190,7 @@ util._extend(VersionedFileSystem.prototype, d.bindMethods({
                             else
                                 return value;
                         }).replace(/\{"regexp":("\/.*?\/[gimy]*")\}/g, 'eval($1)');
-                        lively.ast.acorn.rematchAstWithSource(rewrittenAst.body[0], record.rewritten, true, 'body.0.expression.callee.body.body.0');
+                        acorn.rematchAstWithSource(rewrittenAst.body[0], record.rewritten, true, 'body.0.expression.callee.body.body.0');
                         // TODO: make lively.ast.SourceMap.Generator.mapForASTs work?!
                         record.sourceMap = mapForASTs(ast, rewrittenAst, path.basename(record.path));
                         console.log('Done rewriting ' + record.path + '...');
@@ -261,9 +263,8 @@ util._extend(VersionedFileSystem.prototype, d.bindMethods({
             ended = false;
         find.on('directory', function (dir, stat, stop) {
             var relPath = path.relative(root, dir);
+            if (self.isExcludedDir(relPath)) return stop();
             result.directories.push({path: relPath, stat: stat});
-            var base = path.basename(relPath);
-            if (self.isExcludedDir(base)) stop();
         });
         find.on('file', function (file, stat) {
             var relPath = path.relative(root, file);

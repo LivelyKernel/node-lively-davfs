@@ -222,6 +222,7 @@ util._extend(SQLiteStore.prototype, d.bindMethods({
         //   groupByPaths: BOOL, -- return an object with rows grouped (keys of result)
         //   attributes: [STRING], -- which attributes to return from stored records
         //   newest: BOOL, -- only return most recent version of a record
+        //   exists: BOOL, -- only return records that still exist
         //   paths: [STRING], -- filter records by path names
         //   pathPatterns: [STRING], -- pattern to match paths
         //   version: [STRING|NUMBER], -- the version number
