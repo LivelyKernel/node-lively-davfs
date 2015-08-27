@@ -30,7 +30,7 @@
     "concat-stream": "~1.0",
     "source-map": "^0.4.2",
     "lively-loader": ">=0.2.2",
-    "lively-git-helper": ">=0.0.3"
+    "lively-git-helper": ">=0.0.5"
   },
   "devDependencies": {
     "nodeunit": "~0.8",

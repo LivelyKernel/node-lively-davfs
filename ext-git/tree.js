@@ -20,6 +20,7 @@ var jsDAV_GIT_Tree = module.exports = jsDAV_FS_Tree.extend({
         this.basePath = basePath;
         this.defaultBranch = defaultBranch || 'master';
         this.currentBranch = this.defaultBranch;
+        this.cachedRepoPaths = [];
     },
 
     getNodeForPath: function(name, cbtree) {
@@ -34,13 +35,22 @@ var jsDAV_GIT_Tree = module.exports = jsDAV_FS_Tree.extend({
         //     return cbtree(new Exc.Forbidden("You are not allowed to access " + nicePath));
 
         function findGitPathIncremental(pathParts, callback) {
-            gitHelper.gitPath(pathParts.join(path.sep), function(err, repoBase) {
+            var pathToCheck = pathParts.join(path.sep);
+
+            if (self.cachedRepoPaths.indexOf(pathToCheck) > -1)
+                return callback(null, pathToCheck);
+
+            gitHelper.gitPath(pathToCheck, function(err, repoBase) {
                 if (err) {
                     if (err.code == 'NOTADIR' && pathParts.length > 0)
                         return findGitPathIncremental(pathParts.slice(0, -1), callback);
                     else
                         return callback(err);
                 }
+
+                if (self.cachedRepoPaths.indexOf(repoBase) == -1)
+                    self.cachedRepoPaths.push(repoBase);
+
                 callback(null, repoBase);
             });
         }
