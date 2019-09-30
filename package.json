@@ -24,7 +24,7 @@
     "jsDAV": "https://github.com/LivelyKernel/jsDAV/tarball/windows-compat-nodejs-0.12",
     "restify": "~2.6",
     "findit": "~1.1",
-    "request": "~2.25",
+    "request": "~2.88",
     "async": "~0.9",
     "sqlite3": "^3.1",
     "concat-stream": "~1.0",
