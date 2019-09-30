@@ -22,7 +22,7 @@
   "license": "MIT",
   "dependencies": {
     "jsDAV": "https://github.com/LivelyKernel/jsDAV/tarball/windows-compat-nodejs-0.12",
-    "restify": "~2.6",
+    "restify": "~8.4",
     "findit": "~1.1",
     "request": "~2.25",
     "async": "~0.9",
